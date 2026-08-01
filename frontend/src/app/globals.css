@@ -1,5 +1,4 @@
-@import url('https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -8,32 +7,32 @@
 
 :root {
   /* ---- Type ---- */
-  --font-display: 'General Sans', system-ui, sans-serif;
+  --font-display: 'Instrument Serif', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* ---- Premium Obsidian Surfaces ---- */
-  --void: #060509;
-  --surface: #100F15;
-  --surface-raised: #181720;
-  --border-color: #22202E;
-  --border-hairline: rgba(255, 255, 255, 0.04);
+  --void: #0B1120;
+  --surface: #111827;
+  --surface-raised: #1A2332;
+  --border-color: #1E2D3D;
+  --border-hairline: rgba(255, 255, 255, 0.05);
 
   /* ---- Gradients & Glows ---- */
-  --gradient-brand: linear-gradient(135deg, #7C5CFF 0%, #B066FF 100%);
-  --gradient-brand-hover: linear-gradient(135deg, #6845E0 0%, #9B4DFF 100%);
+  --gradient-brand: linear-gradient(135deg, #3DD9B4 0%, #2BC4A0 100%);
+  --gradient-brand-hover: linear-gradient(135deg, #2EC29D 0%, #1FAF8B 100%);
   --gradient-verify: linear-gradient(135deg, #3DD9B4 0%, #1CCAA1 100%);
   --gradient-verify-hover: linear-gradient(135deg, #2EC29D 0%, #15B08C 100%);
-  --gradient-surface: linear-gradient(180deg, #13121A 0%, #0C0B11 100%);
-  --gradient-surface-raised: linear-gradient(180deg, #1D1B26 0%, #131219 100%);
-  --gradient-dark: linear-gradient(180deg, #0A090E 0%, #040306 100%);
-  --glow-violet: 0 0 30px rgba(124, 92, 255, 0.18);
+  --gradient-surface: linear-gradient(180deg, #141E2E 0%, #0D1520 100%);
+  --gradient-surface-raised: linear-gradient(180deg, #1D2A3A 0%, #141E2E 100%);
+  --gradient-dark: linear-gradient(180deg, #0E1825 0%, #080F18 100%);
+  --glow-violet: 0 0 30px rgba(61, 217, 180, 0.15);
   --glow-verify: 0 0 30px rgba(61, 217, 180, 0.18);
 
   /* ---- Text ---- */
-  --ink: #F3F1F7;
-  --ink-dim: #9C97AE;
-  --ink-faint: #5F5A73;
+  --ink: #E8ECF1;
+  --ink-dim: #8896A7;
+  --ink-faint: #4A5568;
 
   /* ---- Accents ---- */
   --violet: #7C5CFF;
@@ -42,6 +41,8 @@
   --verify-dim: #102621;
   --danger: #FF6E63;
   --danger-dim: #2A1717;
+  --accent-warm: #F5A623;
+  --accent-warm-dim: #2A2010;
 
   /* ---- Spacing (8px system) ---- */
   --space-1: 4px;
@@ -120,7 +121,7 @@ body {
   margin: 0;
   font-family: var(--font-body);
   background-color: var(--void);
-  background-image: radial-gradient(circle at 50% -20%, #171129 0%, var(--void) 70%);
+  background-image: radial-gradient(circle at 50% -20%, #152238 0%, var(--void) 70%);
   color: var(--ink);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -136,9 +137,9 @@ h1, h2, h3, h4 {
   margin: 0;
 }
 
-h1 { font-size: 2.85rem; font-weight: 600; }
-h2 { font-size: 2.1rem; font-weight: 600; }
-h3 { font-size: 1.45rem; font-weight: 500; }
+h1 { font-size: 3.25rem; font-weight: 400; }
+h2 { font-size: 2.25rem; font-weight: 400; }
+h3 { font-size: 1.5rem; font-weight: 400; }
 
 p { margin: 0; max-width: 60ch; }
 
@@ -152,7 +153,7 @@ p { margin: 0; max-width: 60ch; }
 
 /* ---- Premium Gradient Text ---- */
 .text-gradient {
-  background: var(--gradient-brand);
+  background: linear-gradient(135deg, #3DD9B4 0%, #7C5CFF 80%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -174,8 +175,8 @@ p { margin: 0; max-width: 60ch; }
 }
 
 .surface:hover {
-  border-color: rgba(124, 92, 255, 0.25);
-  box-shadow: var(--glow-violet);
+  border-color: rgba(61, 217, 180, 0.2);
+  box-shadow: var(--glow-verify);
 }
 
 .surface-raised {
@@ -202,7 +203,7 @@ p { margin: 0; max-width: 60ch; }
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(124, 92, 255, 0.25);
+  box-shadow: 0 4px 12px rgba(61, 217, 180, 0.25);
   transition: all var(--duration-fast) var(--ease-out);
   position: relative;
   overflow: hidden;
@@ -219,7 +220,7 @@ p { margin: 0; max-width: 60ch; }
 
 .btn-primary:hover {
   background: var(--gradient-brand-hover);
-  box-shadow: 0 6px 20px rgba(124, 92, 255, 0.4);
+  box-shadow: 0 6px 20px rgba(61, 217, 180, 0.4);
   transform: translateY(-1px);
 }
 .btn-primary:hover::before {
@@ -448,121 +449,6 @@ input:focus, textarea:focus {
   transition: opacity 120ms var(--ease-out);
 }
 
-/* ---- Sticky Opener Deck ---- */
-.opener {
-  min-height: 240vh;
-  position: relative;
-  width: 100%;
-}
-
-.opener-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  overflow: hidden;
-}
-
-.card-stack {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  height: 400px;
-}
-
-.reveal-card-landing {
-  position: absolute;
-  inset: 0;
-  background: var(--surface-raised);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-  opacity: 0;
-  transform: translateY(24px);
-  will-change: transform, opacity;
-}
-
-.progress-rail {
-  position: absolute;
-  left: -32px;
-  top: 10%;
-  bottom: 10%;
-  width: 2px;
-  background: var(--border-color);
-}
-
-.progress-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 0%;
-  background: var(--verify);
-  box-shadow: 0 0 10px var(--verify);
-  transition: height 0.1s linear;
-}
-
-/* ---- Horizontal Persona Rail ---- */
-.horizontal-wrap {
-  height: 300vh;
-  position: relative;
-  width: 100%;
-}
-
-.horizontal-sticky {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.horizontal-track {
-  display: flex;
-  gap: 32px;
-  padding: 0 64px;
-  will-change: transform;
-}
-
-.persona-card-landing {
-  flex: 0 0 400px;
-  height: 440px;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 36px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-  transition: border-color var(--duration-base) var(--ease-out);
-}
-
-.collapse-box {
-  width: 90vw;
-  max-width: 950px;
-  height: 55vh;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
-}
-
 /* ---- Premium Navbar Link Styling ---- */
 .nav-link-landing {
   position: relative;
@@ -593,17 +479,6 @@ input:focus, textarea:focus {
 .nav-link-landing:hover,
 .nav-link-landing.active {
   color: var(--ink);
-}
-
-.closer {
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 24px;
-  position: relative;
-  width: 100%;
 }
 
 .collapse-box {

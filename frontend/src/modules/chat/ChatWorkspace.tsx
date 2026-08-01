@@ -3,7 +3,29 @@
 import React, { useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { CitationTraceOverlay } from "@/components/CitationTraceOverlay";
+import { 
+  ArrowLeft,
+  ChevronDown, 
+  ChevronUp, 
+  Plus, 
+  X, 
+  Send, 
+  Sparkles, 
+  FileText, 
+  ChevronRight,
+  BookOpen,
+  Info,
+  MessageSquare,
+  Search,
+  Pin,
+  SquarePen,
+  PanelRight,
+  PanelLeft
+} from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet/sheet";
+
+// ... (keep masterPassages exactly the same, skip to ChatWorkspaceContent return)
+
 
 interface Passage {
   id: number;
@@ -23,77 +45,81 @@ interface Message {
   timestamp: string;
 }
 
+// Master passage dictionary for referencing in the sidebar resolver drawer
+const masterPassages: Record<number, Passage> = {
+  12: {
+    id: 12,
+    sourceDoc: "KDIGO Clinical Practice Guideline for BP in CKD",
+    page: 48,
+    content: "Recommendation 3.1.1: We suggest that an ACEi or ARB be initiated in adults with high BP, CKD, and albuminuria (Grade 1B). First-line therapy in elderly patients requires low initial titration.",
+    confidence: 0.96
+  },
+  15: {
+    id: 15,
+    sourceDoc: "JNC-8 Pharmacotherapy Protocol Guidelines",
+    page: 92,
+    content: "Table 4: Dual therapy combination rules for Stage 2 HTN: Combine ACEi/ARB with DHP-CCB when SBP is >20 mmHg above target.",
+    confidence: 0.92
+  },
+  18: {
+    id: 18,
+    sourceDoc: "Clinical Monitoring Protocols - Renal Safety v3.1",
+    page: 14,
+    content: "Mandatory lab check: Evaluate eGFR and K+ within 7–14 days following initiation or dose escalation of any RAAS inhibitor.",
+    confidence: 0.89
+  },
+  21: {
+    id: 21,
+    sourceDoc: "WHO Clinical Management Guidelines 2025",
+    page: 112,
+    content: "Comprehensive assessment requires baseline eGFR, spot urinary albumin-to-creatinine ratio, and 24-hour ambulatory blood pressure monitoring.",
+    confidence: 0.94
+  },
+  24: {
+    id: 24,
+    sourceDoc: "Primary Care Clinical Decision Matrix v2",
+    page: 34,
+    content: "High-risk patients require bi-weekly clinical monitoring until BP stabilization below 130/80 mmHg is established.",
+    confidence: 0.91
+  }
+};
+
 function ChatWorkspaceContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
 
   const [inputQuery, setInputQuery] = useState(initialQuery);
-  const [activeCitationId, setActiveCitationId] = useState<number | null>(12);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "msg-1",
-      sender: "user",
-      content: "What is the recommended pharmacological treatment for stage 2 hypertension in elderly patients with CKD?",
-      timestamp: "10:42 AM",
-    },
-    {
-      id: "msg-2",
-      sender: "ai",
-      content:
-        "For elderly patients with stage 2 hypertension and co-existing Chronic Kidney Disease (CKD), initial monotherapy should begin with an Angiotensin Converting Enzyme (ACE) inhibitor or Angiotensin Receptor Blocker (ARB) [12]. If target blood pressure (<130/80 mmHg) is not achieved within 4 weeks, combine with a long-acting dihydropyridine calcium channel blocker (such as Amlodipine) [15]. Serum creatinine and potassium levels must be re-evaluated within 14 days of therapy initiation [18].",
-      citations: [12, 15, 18],
-      passages: [
-        {
-          id: 12,
-          sourceDoc: "KDIGO Clinical Practice Guideline for Management of BP in CKD",
-          page: 48,
-          content:
-            "Recommendation 3.1.1: We suggest that an ACEi or ARB be initiated in adults with high BP, CKD, and albuminuria (Grade 1B). First-line therapy in elderly patients requires low initial titration.",
-          confidence: 0.96,
-        },
-        {
-          id: 15,
-          sourceDoc: "JNC-8 Pharmacotherapy Protocol Guidelines",
-          page: 92,
-          content:
-            "Table 4: Dual therapy combination rules for Stage 2 HTN: Combine ACEi/ARB with DHP-CCB when SBP is >20 mmHg above target.",
-          confidence: 0.92,
-        },
-        {
-          id: 18,
-          sourceDoc: "Clinical Monitoring Protocols - Renal Safety v3.1",
-          page: 14,
-          content:
-            "Mandatory lab check: Evaluate eGFR and K+ within 7–14 days following initiation or dose escalation of any RAAS inhibitor.",
-          confidence: 0.89,
-        },
-      ],
-      timestamp: "10:42 AM",
-    },
-  ]);
+  const [activeCitationId, setActiveCitationId] = useState<number | null>(null);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false); // Collapsed by default
+  const [activeTab, setActiveTab] = useState<"chat" | "search" | "pinned">("chat");
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const workspaceRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const activePassageList = messages.flatMap((m) => m.passages || []);
+  const starterPrompts = [
+    { label: "Diabetes Threshold", query: "What is the diagnostic threshold for diabetes mellitus?" },
+    { label: "CKD Staging", query: "What are the stage classifications for chronic kidney disease?" },
+    { label: "Pediatric Asthma", query: "What is the first-line pharmacotherapy for pediatric asthma exacerbation?" }
+  ];
 
-  const handleSend = () => {
-    if (!inputQuery.trim() || isLoading) return;
+  const handleSend = (queryToSend?: string) => {
+    const activeQuery = queryToSend || inputQuery;
+    if (!activeQuery.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: `msg-${Date.now()}`,
       sender: "user",
-      content: inputQuery,
+      content: activeQuery,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
-    const currentQ = inputQuery;
     setInputQuery("");
     setIsLoading(true);
 
     setTimeout(() => {
-      const isLowConf = currentQ.toLowerCase().includes("unverified") || currentQ.toLowerCase().includes("unknown");
+      const isLowConf = activeQuery.toLowerCase().includes("unverified") || activeQuery.toLowerCase().includes("unknown");
 
       const aiMsg: Message = isLowConf
         ? {
@@ -107,25 +133,11 @@ function ChatWorkspaceContent() {
         : {
             id: `msg-${Date.now() + 1}`,
             sender: "ai",
-            content: `Regarding "${currentQ}": Based on standard clinical protocols, primary evaluation prioritizes baseline assessment of renal function and blood pressure logs [21]. Follow-up should be scheduled within 2 to 4 weeks depending on initial risk stratification [24].`,
+            content: `Regarding "${activeQuery}": Based on standard clinical protocols, primary evaluation prioritizes baseline assessment of renal function and blood pressure logs [21]. Follow-up should be scheduled within 2 to 4 weeks depending on initial risk stratification [24].`,
             citations: [21, 24],
             passages: [
-              {
-                id: 21,
-                sourceDoc: "WHO Clinical Management Guidelines 2025",
-                page: 112,
-                content:
-                  "Comprehensive assessment requires baseline eGFR, spot urinary albumin-to-creatinine ratio, and 24-hour ambulatory blood pressure monitoring.",
-                confidence: 0.94,
-              },
-              {
-                id: 24,
-                sourceDoc: "Primary Care Clinical Decision Matrix v2",
-                page: 34,
-                content:
-                  "High-risk patients require bi-weekly clinical monitoring until BP stabilization below 130/80 mmHg is established.",
-                confidence: 0.91,
-              },
+              masterPassages[21],
+              masterPassages[24]
             ],
             timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           };
@@ -138,204 +150,371 @@ function ChatWorkspaceContent() {
     }, 1200);
   };
 
+  const activePassage = activeCitationId ? masterPassages[activeCitationId] : null;
+
   return (
-    <div className="h-screen bg-[var(--void)] flex flex-col overflow-hidden selection:bg-[var(--violet-dim)]">
-      {/* Workspace Header */}
-      <header className="h-[56px] hairline-b bg-black/60 backdrop-blur-md px-6 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center group">
-            <span className="font-display font-semibold text-base tracking-tight text-[var(--ink)]">
-              Ayushman<span className="text-[var(--ink-dim)] font-normal text-xs ml-1 font-mono">AI</span>
-            </span>
-          </Link>
-
-          {/* Model Tag System Status Line */}
-          <div className="hidden md:flex items-center gap-2.5 text-mono text-xs text-[var(--ink-dim)] font-mono">
-            <span className="text-[var(--ink-faint)]">ENGINE:</span>
-            <span className="text-[var(--ink)] font-medium">Regional Guidelines Verification</span>
-            <span className="mx-1 text-[var(--border-color)]">|</span>
-            <span className="text-[var(--verify)] font-semibold">ACTIVE CONTEXT LOADED</span>
+    <div className="h-screen bg-[var(--void)] flex overflow-hidden selection:bg-[var(--violet-dim)] selection:text-[var(--violet)] relative">
+      
+      {/* Smoothly Expandable / Contractable Sidebar Rail */}
+      <aside 
+        className="bg-black/60 border-r border-[var(--border-color)] flex flex-col justify-between py-6 shrink-0 z-30 transition-all duration-300 ease-in-out overflow-hidden"
+        style={{ width: sidebarExpanded ? "260px" : "60px" }}
+      >
+        
+        {/* Top Section Icons */}
+        <div className="flex flex-col gap-6 items-center w-full px-2">
+          
+          {/* Sidebar Toggle Header Row */}
+          <div className={`flex items-center w-full px-2 min-h-[32px] ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
+            {sidebarExpanded && (
+              <span className="font-display font-medium text-[15px] text-[var(--ink)] tracking-tight whitespace-nowrap pl-1">
+                Ayushman<span className="text-[var(--verify)] font-mono text-[10px] font-semibold ml-0.5">AI</span>
+              </span>
+            )}
+            
+            <button 
+              onClick={() => setSidebarExpanded(!sidebarExpanded)}
+              className="p-1.5 text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)] rounded-lg transition-colors shrink-0"
+              title={sidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
+            >
+              {sidebarExpanded ? <PanelLeft className="w-4.5 h-4.5" /> : <PanelRight className="w-4.5 h-4.5" />}
+            </button>
           </div>
-        </div>
 
-        <div className="flex items-center gap-4 text-xs text-mono font-mono">
-          <span className="text-[var(--ink-dim)] hidden sm:inline">Dr. S. Sharma</span>
-          <Link href="/" className="btn-ghost py-1 px-3 text-xs rounded-[5px]">
-            Exit Workspace
-          </Link>
-        </div>
-      </header>
+          {/* Action Divider Line */}
+          <div className="w-8 h-[1px] bg-[var(--border-color)] shrink-0" />
 
-      {/* Main 3-Column Layout */}
-      <div className="flex-1 flex overflow-hidden relative" ref={workspaceRef}>
-        {/* SVG Connector Overlay */}
-        <CitationTraceOverlay
-          containerRef={workspaceRef}
-          activeCitationId={activeCitationId}
-          citationSelectorPrefix="chat-cite-"
-          sourceSelectorPrefix="chat-source-"
-        />
-
-        {/* Column 1: Sidebar (260px) */}
-        <aside className="w-[260px] min-w-[260px] bg-[var(--surface)] hairline-r flex flex-col p-4 gap-4 hidden lg:flex shrink-0">
+          {/* New Chat Button */}
           <button
-            onClick={() => setMessages([])}
-            className="btn-primary w-full text-xs py-2.5 rounded-[6px] flex items-center justify-center gap-2 font-display font-semibold"
+            onClick={() => {
+              setMessages([]);
+              setInputQuery("");
+              setActiveCitationId(null);
+            }}
+            className={`w-full flex items-center rounded-xl bg-[var(--surface-raised)] border border-[var(--border-color)] text-[var(--ink-dim)] hover:text-[var(--ink)] hover:border-[var(--verify)]/50 p-2.5 transition-all overflow-hidden ${
+              sidebarExpanded ? "justify-start px-3.5" : "justify-center px-0"
+            }`}
+            title="New Chat"
           >
-            <span>+</span> New Clinical Consultation
+            <SquarePen className="w-4.5 h-4.5 shrink-0" />
+            {sidebarExpanded && (
+              <span className="ml-3 text-xs font-semibold whitespace-nowrap">
+                New Consultation
+              </span>
+            )}
           </button>
 
-          <div className="flex-1 flex flex-col gap-3 overflow-y-auto">
-            <div className="text-mono text-[11px] text-[var(--ink-faint)] uppercase tracking-wider px-2 font-semibold font-mono">
-              Recent Consultations
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="p-2.5 rounded-[6px] bg-[var(--surface-raised)] border border-white/5 text-xs text-[var(--ink)] cursor-pointer truncate font-body">
+          {/* Sidebar Nav Tabs */}
+          <div className="flex flex-col gap-2 w-full">
+            <button
+              onClick={() => setActiveTab("search")}
+              className={`w-full flex items-center rounded-xl p-2.5 transition-all overflow-hidden ${
+                activeTab === "search" 
+                  ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
+                  : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
+              } ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+              title="Search Guidelines"
+            >
+              <Search className="w-4.5 h-4.5 shrink-0" />
+              {sidebarExpanded && (
+                <span className="ml-3 text-xs whitespace-nowrap">
+                  Search Guidelines
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("pinned")}
+              className={`w-full flex items-center rounded-xl p-2.5 transition-all overflow-hidden ${
+                activeTab === "pinned" 
+                  ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
+                  : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
+              } ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+              title="Pinned References"
+            >
+              <Pin className="w-4.5 h-4.5 shrink-0" />
+              {sidebarExpanded && (
+                <span className="ml-3 text-xs whitespace-nowrap">
+                  Pinned References
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`w-full flex items-center rounded-xl p-2.5 transition-all overflow-hidden ${
+                activeTab === "chat" 
+                  ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
+                  : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
+              } ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
+              title="Chat History"
+            >
+              <MessageSquare className="w-4.5 h-4.5 shrink-0" />
+              {sidebarExpanded && (
+                <span className="ml-3 text-xs whitespace-nowrap">
+                  Chat History
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Collapsible Session List panel */}
+          {sidebarExpanded && activeTab === "chat" && (
+            <div className="w-full flex flex-col gap-1.5 overflow-y-auto px-2 mt-2 h-44">
+              <div className="text-[9px] text-[var(--ink-faint)] uppercase tracking-wider px-2 font-bold font-mono">
+                Recent Sessions
+              </div>
+              <div 
+                onClick={() => {
+                  setMessages([
+                    {
+                      id: "msg-1",
+                      sender: "user",
+                      content: "What is the recommended pharmacological treatment for stage 2 hypertension in elderly patients with CKD?",
+                      timestamp: "10:42 AM",
+                    },
+                    {
+                      id: "msg-2",
+                      sender: "ai",
+                      content:
+                        "For elderly patients with stage 2 hypertension and co-existing Chronic Kidney Disease (CKD), initial monotherapy should begin with an Angiotensin Converting Enzyme (ACE) inhibitor or Angiotensin Receptor Blocker (ARB) [12]. If target blood pressure (<130/80 mmHg) is not achieved within 4 weeks, combine with a long-acting dihydropyridine calcium channel blocker (such as Amlodipine) [15]. Serum creatinine and potassium levels must be re-evaluated within 14 days of therapy initiation [18].",
+                      citations: [12, 15, 18],
+                      passages: [
+                        masterPassages[12],
+                        masterPassages[15],
+                        masterPassages[18]
+                      ],
+                      timestamp: "10:42 AM",
+                    },
+                  ]);
+                }}
+                className="p-2 rounded-lg bg-[var(--surface-raised)] border border-white/[0.03] text-xs text-[var(--ink)] cursor-pointer truncate font-body hover:brightness-110"
+              >
                 Stage 2 HTN in Elderly CKD
               </div>
-              <div className="p-2.5 rounded-[6px] hover:bg-[var(--surface-raised)] text-xs text-[var(--ink-dim)] cursor-pointer truncate font-body transition-colors">
-                Metformin & SGLT2 Combination
+            </div>
+          )}
+
+        </div>
+
+        {/* Bottom Section - User Profile (Green BH Avatar) */}
+        <div className="flex items-center gap-3 w-full px-3.5 overflow-hidden shrink-0">
+          <div 
+            className="w-8.5 h-8.5 rounded-full bg-[#10B981] flex items-center justify-center text-white text-[11px] font-bold shrink-0 font-mono shadow-md"
+            title="Bhabanishankar (Physician Evaluator)"
+          >
+            BH
+          </div>
+          {sidebarExpanded && (
+            <div className="flex flex-col text-left overflow-hidden truncate whitespace-nowrap">
+              <span className="text-xs font-semibold text-[var(--ink)] leading-none">Bhabanishankar</span>
+              <span className="text-[8px] text-[var(--ink-faint)] font-mono mt-1 uppercase tracking-wider">CLINICAL EVALUATOR</span>
+            </div>
+          )}
+        </div>
+
+      </aside>
+
+      {/* Chat Workspace Main Canvas */}
+      <main className="flex-1 flex flex-col min-w-0 bg-[var(--void)] relative">
+        
+        {/* Floating Exit Row (No Nav Bar) */}
+        <div className="absolute top-4 right-4 flex items-center justify-end z-20">
+          <Link 
+            href="/" 
+            className="text-xs font-mono text-[var(--ink-dim)] hover:text-[var(--ink)] bg-[var(--surface)] border border-[var(--border-color)] px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Exit Chat</span>
+          </Link>
+        </div>
+
+        {/* Message Thread Scroll Stream */}
+        <div className="flex-grow overflow-y-auto px-4 sm:px-6 md:px-8 pt-24 pb-36 flex flex-col">
+          {messages.length === 0 ? (
+            
+            /* Centered Claude-style Empty State */
+            <div className="flex-grow flex flex-col items-center justify-center text-center max-w-[620px] mx-auto gap-8 my-auto">
+              <div className="flex flex-col gap-2">
+                <span className="font-display text-4xl font-normal text-[var(--ink)] tracking-tight">
+                  Ayushman<span className="text-[var(--verify)] font-mono text-sm font-semibold ml-1">AI</span>
+                </span>
+                <p className="text-sm text-[var(--ink-dim)] leading-relaxed font-body mt-1">
+                  Verifiable medical guidelines & reference tracing workspace.
+                </p>
               </div>
-              <div className="p-2.5 rounded-[6px] hover:bg-[var(--surface-raised)] text-xs text-[var(--ink-dim)] cursor-pointer truncate font-body transition-colors">
-                Acute Coronary Protocol Triage
-              </div>
-              <div className="p-2.5 rounded-[6px] hover:bg-[var(--surface-raised)] text-xs text-[var(--ink-dim)] cursor-pointer truncate font-body transition-colors">
-                Pediatric Amoxicillin Dosage
+
+              <div className="w-full flex flex-col gap-2">
+                <div className="text-[9px] font-mono text-[var(--ink-faint)] uppercase tracking-wider text-left pl-1">
+                  Starter guideline queries
+                </div>
+                <div className="flex flex-col gap-2">
+                  {starterPrompts.map((p, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(p.query)}
+                      className="w-full p-4 rounded-xl bg-[var(--surface)] hover:bg-[var(--surface-raised)] border border-[var(--border-color)] text-xs text-[var(--ink-dim)] hover:text-[var(--ink)] text-left flex items-center justify-between group transition-all"
+                    >
+                      <span className="truncate pr-4">{p.query}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-[var(--ink-faint)] group-hover:text-[var(--verify)] transition-colors shrink-0" />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </aside>
-
-        {/* Column 2: Chat Workspace Stream */}
-        <main className="flex-1 flex flex-col min-w-0 bg-[var(--void)]">
-          <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-8">
-            {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center gap-2">
-                <p className="text-sm text-[var(--ink-dim)] font-body">
-                  Ask about symptoms, medications, or a clinical protocol
-                </p>
-                <span className="text-mono text-xs text-[var(--ink-faint)] font-mono">
-                  All generated clinical statements will be spatially mapped to source passages.
-                </span>
-              </div>
-            ) : (
-              messages.map((msg) => (
-                <div key={msg.id} className="flex flex-col gap-3 max-w-[72ch] w-full mx-auto">
+          ) : (
+            
+            /* Chat message container */
+            <div className="max-w-[700px] w-full mx-auto flex flex-col gap-8">
+              {messages.map((msg) => (
+                <div key={msg.id} className="w-full">
+                  
+                  {/* User Bubble */}
                   {msg.sender === "user" ? (
-                    <div className="message-user text-sm text-[var(--ink)] leading-relaxed rounded-[8px]">
-                      {msg.content}
+                    <div className="flex justify-end w-full">
+                      <div className="bg-[var(--surface-raised)] border border-[var(--border-color)] text-[var(--ink)] text-sm px-4 py-3 rounded-2xl max-w-[85%] font-body">
+                        {msg.content}
+                      </div>
                     </div>
                   ) : (
-                    <div className="message-ai text-sm text-[var(--ink)] leading-relaxed flex flex-col gap-4">
+                    
+                    /* AI message formatting with inline references */
+                    <div className="flex flex-col gap-4 w-full">
                       {msg.unverified && (
-                        <div className="inline-flex items-center gap-2 self-start">
-                          <span className="status-unverified font-mono">.status-unverified</span>
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-red-950/20 border border-red-900/30 text-red-400 text-[10px] font-mono uppercase tracking-wider self-start">
+                          Unverified Output
                         </div>
                       )}
 
-                      <div className="font-body text-[var(--ink)]">
-                        {/* Process content to render interactive [N] citation triggers */}
+                      <div className="text-[var(--ink)] text-sm leading-relaxed font-body">
                         {renderFormattedAIResponse(
                           msg.content,
                           activeCitationId,
-                          (id) => setActiveCitationId(id),
+                          (id) => setActiveCitationId((prev) => (prev === id ? null : id)),
                           "chat-cite-"
                         )}
-                      </div>
-
-                      <div className="flex items-center justify-between text-mono text-[11px] text-[var(--ink-faint)] pt-2.5 border-t border-[var(--border-color)] font-mono">
-                        <span>Grounding: {msg.unverified ? "Unverified / Low Confidence" : "100% Passages Verifiable"}</span>
-                        <span>{msg.timestamp}</span>
                       </div>
                     </div>
                   )}
                 </div>
-              ))
-            )}
+              ))}
 
-            {isLoading && (
-              <div className="max-w-[72ch] w-full mx-auto text-mono text-xs text-[var(--ink-dim)] flex items-center gap-2 font-mono">
-                <span>Analyzing clinical database</span>
-                <span className="typing-pulse">
-                  <span />
-                  <span />
-                  <span />
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Input Bar */}
-          <div className="p-5 bg-[var(--surface)] border-t border-[var(--border-color)] shrink-0">
-            <div className="max-w-[72ch] mx-auto flex gap-3.5">
-              <input
-                type="text"
-                value={inputQuery}
-                onChange={(e) => setInputQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder="Ask about symptoms, medications, or a clinical protocol..."
-                className="flex-1 text-sm bg-[var(--void)] text-[var(--ink)] placeholder-[var(--ink-faint)] focus:outline-none border border-[var(--border-color)] rounded-[6px] px-4 py-3"
-              />
-              <button
-                onClick={handleSend}
-                disabled={!inputQuery.trim() || isLoading}
-                className="btn-primary text-xs px-6 py-3 font-display font-semibold rounded-[6px] flex items-center justify-center min-w-[80px]"
-              >
-                {isLoading ? <span className="text-mono font-mono">···</span> : "Send"}
-              </button>
-            </div>
-          </div>
-        </main>
-
-        {/* Column 3: Persistent Right Citation Rail (340px) */}
-        <aside className="w-[340px] min-w-[340px] bg-[var(--surface)] hairline-l border-l border-[var(--border-hairline)] flex flex-col p-4 gap-4 overflow-y-auto shrink-0 hidden md:flex">
-          <div className="flex items-center justify-between hairline-b pb-3.5 text-mono text-xs font-mono">
-            <span className="text-[var(--ink-faint)] uppercase font-semibold">CITATION PASSAGE</span>
-            <span className="text-[var(--verify)] font-semibold">
-              {activeCitationId ? `PASSAGE [${activeCitationId}]` : "IDLE"}
-            </span>
-          </div>
-
-          {activePassageList.length === 0 ? (
-            <div className="py-12 text-center text-xs text-mono text-[var(--ink-faint)] font-mono">
-              Click a citation to see its source
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              {activePassageList.map((passage) => {
-                const isActive = passage.id === activeCitationId;
-                return (
-                  <div
-                    key={passage.id}
-                    id={`chat-source-${passage.id}`}
-                    onClick={() => setActiveCitationId(passage.id)}
-                    className={`surface p-4 flex flex-col gap-2.5 cursor-pointer transition-all duration-300 ${
-                      isActive
-                        ? "bg-[var(--surface-raised)] border-[var(--verify)] shadow-md shadow-emerald-500/5"
-                        : "bg-[var(--void)] opacity-50 hover:opacity-100 border-[var(--border-color)]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-mono text-[11px] font-mono">
-                      <span className="text-[var(--verify)] font-semibold">
-                        [{passage.id}] {passage.sourceDoc}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-mono text-[10px] text-[var(--ink-faint)] font-mono">
-                      <span>Page {passage.page}</span>
-                      <span>Confidence: {(passage.confidence * 100).toFixed(0)}%</span>
-                    </div>
-
-                    <p className="text-xs text-[var(--ink-dim)] leading-relaxed font-mono pt-1">
-                      "{passage.content}"
-                    </p>
-                  </div>
-                );
-              })}
+              {isLoading && (
+                <div className="max-w-[700px] w-full mx-auto text-mono text-[11px] text-[var(--ink-dim)] flex items-center gap-2 font-mono pl-1">
+                  <span>Grounding response</span>
+                  <span className="typing-pulse">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </div>
+              )}
             </div>
           )}
-        </aside>
-      </div>
+        </div>
+
+        {/* Centered Claude-style Floating Prompt Box (Single-layer design) */}
+        <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-[var(--void)] via-[var(--void)]/95 to-transparent pt-10 pb-8 px-4 z-10">
+          <div className="max-w-[700px] mx-auto relative flex items-center bg-[var(--surface-raised)] border border-[var(--border-color)] focus-within:border-[var(--verify)]/60 focus-within:ring-1 focus-within:ring-[var(--verify)]/10 rounded-2xl pl-5 pr-16 py-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.6)] focus-within:shadow-[0_12px_45px_rgba(61,217,180,0.06)] transition-all">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={inputQuery}
+              onChange={(e) => setInputQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              placeholder="Ask a clinical evaluation query..."
+              className="flex-grow bg-transparent text-sm text-[var(--ink)] placeholder-[var(--ink-faint)] focus:outline-none resize-none max-h-32 font-body py-0.5 leading-relaxed"
+              style={{ height: "auto" }}
+            />
+            <button
+              onClick={() => handleSend()}
+              disabled={!inputQuery.trim() || isLoading}
+              className="absolute right-4  w-10 h-10 rounded-full bg-[#10B981] disabled:bg-[var(--surface)] text-white disabled:text-[var(--ink-faint)] flex items-center justify-center hover:brightness-110 disabled:hover:brightness-100 hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer"
+            >
+              <Send className="w-5 h-5 stroke-[2.2]" />
+            </button>
+          </div>
+        </div>
+
+      </main>
+
+      {/* Slide-out Document Drawer Panel utilizing Sheet UI Component */}
+      <Sheet 
+        open={activeCitationId !== null} 
+        onOpenChange={(open) => {
+          if (!open) setActiveCitationId(null);
+        }}
+      >
+        <SheetContent hideClose className="sm:w-[480px] w-full border-l border-[var(--border-color)] flex flex-col p-0">
+          {activePassage ? (
+            <div className="h-full flex flex-col">
+              
+              {/* Drawer Header */}
+              <div className="px-5 py-4 border-b border-[var(--border-color)] flex items-center justify-between shrink-0 bg-black/10">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-[var(--verify)]" />
+                  <span className="font-display font-medium text-sm text-[var(--ink)]">
+                    Reference Context
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setActiveCitationId(null)}
+                  className="rounded-lg p-1.5 border border-[var(--border-color)] bg-[var(--surface-raised)] text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface)] transition-all cursor-pointer flex items-center justify-center"
+                  title="Close context"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Drawer Body Scroll Content */}
+              <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
+                
+                {/* Document info card */}
+                <div className="p-4 rounded-xl bg-[var(--surface-raised)] border border-[var(--border-color)] flex flex-col gap-3 font-mono">
+                  <div className="text-[10px] text-[var(--verify)] font-bold uppercase tracking-wider">
+                    SOURCE ARCHIVE
+                  </div>
+                  <h3 className="text-xs font-semibold text-[var(--ink)] leading-relaxed font-body">
+                    {activePassage.sourceDoc}
+                  </h3>
+                  <div className="flex justify-between items-center text-[10px] text-[var(--ink-dim)] border-t border-[var(--border-color)]/50 pt-2.5 mt-1">
+                    <span>PAGE {activePassage.page}</span>
+                    <span className="text-[var(--verify)] font-bold">CONFIDENCE: {(activePassage.confidence * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+
+                {/* Exact Quote highlight box */}
+                <div className="flex-1 flex flex-col gap-3">
+                  <div className="text-[10px] font-mono text-[var(--ink-faint)] uppercase tracking-wider flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-[var(--verify)]" />
+                    <span>LITERAL PASSAGE CONTENT</span>
+                  </div>
+                  <div className="flex-grow p-4.5 rounded-xl bg-[var(--void)] border border-[var(--border-color)] text-[12px] text-[var(--ink-dim)] leading-relaxed font-mono select-all select-text italic">
+                    "{activePassage.content}"
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Drawer Footer Status line */}
+              <div className="px-5 py-3 border-t border-[var(--border-color)] text-[9px] text-[var(--ink-faint)] font-mono uppercase tracking-wider bg-black/10 shrink-0">
+                Deterministic Ingestion Bound Active
+              </div>
+
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center text-xs text-[var(--ink-faint)]">
+              No active citation selected.
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
     </div>
   );
 }
@@ -366,7 +545,11 @@ function renderFormattedAIResponse(
           key={idx}
           id={`${prefix}${citeId}`}
           onClick={() => onSelect(citeId)}
-          className={`citation-index ${isActive ? "bg-[var(--verify-dim)] font-semibold shadow-[0_0_6px_rgba(61,217,180,0.2)]" : ""}`}
+          className={`citation-index cursor-pointer inline-block px-1.5 py-0.5 rounded mx-0.5 text-xs font-mono select-none transition-all ${
+            isActive 
+              ? "bg-[var(--verify-dim)] text-[var(--verify)] border border-[var(--verify)]/30 font-bold shadow-[0_0_8px_rgba(61,217,180,0.15)]" 
+              : "bg-[var(--surface-raised)] text-[var(--ink-dim)] border border-[var(--border-color)] hover:border-[var(--verify)]/40 hover:text-[var(--verify)]"
+          }`}
         >
           [{citeId}]
         </span>

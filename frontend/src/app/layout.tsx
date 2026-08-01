@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SplashCursor from "@/react-bits/SplashCursor";
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: "Ayushman-AI — Clinical Knowledge & Traceable RAG",
@@ -17,10 +13,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("h-full antialiased dark", "font-sans", geist.variable)}>
+    <html lang="en" className="h-full antialiased dark font-sans">
       <body className="min-h-full flex flex-col bg-[var(--void)] text-[var(--ink)]">
         <SplashCursor
-          DENSITY_DISSIPATION={3.0}
+          DENSITY_DISSIPATION={8.0}
+          SPLAT_RADIUS={0.055}
+          RAINBOW_MODE={false}
+          COLOR="#10B981"
         />
         {children}
       </body>
