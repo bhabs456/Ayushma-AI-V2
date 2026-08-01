@@ -3,6 +3,7 @@
 import React, { useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { motion } from "framer-motion";
 import { 
   ArrowLeft,
   ChevronDown, 
@@ -22,10 +23,8 @@ import {
   PanelRight,
   PanelLeft
 } from "lucide-react";
+import { Sidebar, SidebarBody, useSidebar } from "@/modules/layout/sidebar";
 import { Sheet, SheetContent } from "@/components/ui/sheet/sheet";
-
-// ... (keep masterPassages exactly the same, skip to ChatWorkspaceContent return)
-
 
 interface Passage {
   id: number;
@@ -84,13 +83,264 @@ const masterPassages: Record<number, Passage> = {
   }
 };
 
+// Sidebar items layout mapped directly to the animation context of DesktopSidebar (open/collapsed)
+interface WorkspaceSidebarProps {
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  setInputQuery: React.Dispatch<React.SetStateAction<string>>;
+  setActiveCitationId: React.Dispatch<React.SetStateAction<number | null>>;
+  activeTab: "chat" | "search" | "pinned";
+  setActiveTab: React.Dispatch<React.SetStateAction<"chat" | "search" | "pinned">>;
+}
+
+function WorkspaceSidebarContent({
+  setMessages,
+  setInputQuery,
+  setActiveCitationId,
+  activeTab,
+  setActiveTab
+}: WorkspaceSidebarProps) {
+  const { open, setOpen } = useSidebar();
+
+  const labelVariants = {
+    open: { width: "auto", opacity: 1, marginLeft: 12, display: "inline-block" },
+    closed: { width: 0, opacity: 0, marginLeft: 0, transitionEnd: { display: "none" } }
+  };
+
+  const profileVariants = {
+    open: { width: "auto", opacity: 1, marginLeft: 12, display: "flex" },
+    closed: { width: 0, opacity: 0, marginLeft: 0, transitionEnd: { display: "none" } }
+  };
+
+  const labelTransition = {
+    width: { type: "spring", stiffness: 300, damping: 30 },
+    opacity: { duration: 0.2 },
+    marginLeft: { duration: 0.2 }
+  } as const;
+
+  return (
+    <>
+      {/* Top Section Icons */}
+      <div className="flex flex-col gap-8 items-center w-full">
+        
+        {/* Sidebar Toggle Header Row */}
+        <motion.div 
+          animate={{
+            paddingLeft: open ? "8px" : "0px",
+            paddingRight: open ? "8px" : "0px",
+          }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="flex items-center w-full min-h-8 justify-between"
+        >
+          <div className="flex items-center overflow-hidden whitespace-nowrap">
+            <motion.span 
+              variants={labelVariants}
+              initial={false}
+              animate={open ? "open" : "closed"}
+              transition={labelTransition}
+              className="font-display font-medium text-[15px] text-[var(--ink)] tracking-tight whitespace-nowrap"
+            >
+              Ayushman<span className="text-[var(--verify)] font-mono text-[10px] font-semibold ml-0.5">AI</span>
+            </motion.span>
+          </div>
+          
+          <button 
+            onClick={() => setOpen(!open)}
+            className={`p-1.5 text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)] rounded-lg transition-colors shrink-0 ${!open ? "mx-auto" : ""}`}
+            title={open ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            {open ? <PanelLeft className="w-4.5 h-4.5" /> : <PanelRight className="w-4.5 h-4.5" />}
+          </button>
+        </motion.div>
+
+        {/* Action Divider Line */}
+        <div className="w-8 h-[1px] bg-[var(--border-color)] shrink-0" />
+
+        {/* New Chat Button */}
+        <motion.button
+          onClick={() => {
+            setMessages([]);
+            setInputQuery("");
+            setActiveCitationId(null);
+            setOpen(false);
+          }}
+          animate={{
+            paddingLeft: open ? "14px" : "10px",
+            justifyContent: open ? "flex-start" : "center",
+          }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="w-full flex items-center rounded-xl bg-[var(--surface-raised)] border border-[var(--border-color)] text-[var(--ink-dim)] hover:text-[var(--ink)] hover:border-[var(--verify)]/50 p-2.5 overflow-hidden whitespace-nowrap shrink-0"
+          title="New Chat"
+        >
+          <SquarePen className="w-4.5 h-4.5 shrink-0" />
+          <motion.span 
+            variants={labelVariants}
+            initial={false}
+            animate={open ? "open" : "closed"}
+            transition={labelTransition}
+            className="text-xs font-semibold whitespace-nowrap"
+          >
+            New Consultation
+          </motion.span>
+        </motion.button>
+
+        {/* Sidebar Nav Tabs */}
+        <div className="flex flex-col gap-4 w-full">
+          <motion.button
+            onClick={() => setActiveTab("search")}
+            animate={{
+              paddingLeft: open ? "12px" : "8px",
+              justifyContent: open ? "flex-start" : "center",
+            }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className={`w-full flex items-center rounded-xl p-2.5 overflow-hidden whitespace-nowrap ${
+              activeTab === "search" 
+                ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
+                : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
+            }`}
+            title="Search Guidelines"
+          >
+            <Search className="w-4.5 h-4.5 shrink-0" />
+            <motion.span 
+              variants={labelVariants}
+              initial={false}
+              animate={open ? "open" : "closed"}
+              transition={labelTransition}
+              className="text-xs whitespace-nowrap"
+            >
+              Search Guidelines
+            </motion.span>
+          </motion.button>
+
+          <motion.button
+            onClick={() => setActiveTab("pinned")}
+            animate={{
+              paddingLeft: open ? "12px" : "8px",
+              justifyContent: open ? "flex-start" : "center",
+            }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className={`w-full flex items-center rounded-xl p-2.5 overflow-hidden whitespace-nowrap ${
+              activeTab === "pinned" 
+                ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
+                : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
+            }`}
+            title="Pinned References"
+          >
+            <Pin className="w-4.5 h-4.5 shrink-0" />
+            <motion.span 
+              variants={labelVariants}
+              initial={false}
+              animate={open ? "open" : "closed"}
+              transition={labelTransition}
+              className="text-xs whitespace-nowrap"
+            >
+              Pinned References
+            </motion.span>
+          </motion.button>
+
+          <motion.button
+            onClick={() => setActiveTab("chat")}
+            animate={{
+              paddingLeft: open ? "12px" : "8px",
+              justifyContent: open ? "flex-start" : "center",
+            }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className={`w-full flex items-center rounded-xl p-2.5 overflow-hidden whitespace-nowrap ${
+              activeTab === "chat" 
+                ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
+                : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
+            }`}
+            title="Chat History"
+          >
+            <MessageSquare className="w-4.5 h-4.5 shrink-0" />
+            <motion.span 
+              variants={labelVariants}
+              initial={false}
+              animate={open ? "open" : "closed"}
+              transition={labelTransition}
+              className="text-xs whitespace-nowrap"
+            >
+              Chat History
+            </motion.span>
+          </motion.button>
+        </div>
+
+        {/* Collapsible Session List panel */}
+        {open && activeTab === "chat" && (
+          <div className="w-full flex flex-col gap-1.5 overflow-y-auto px-2 mt-2 h-44 transition-all duration-300">
+            <div className="text-[9px] text-[var(--ink-faint)] uppercase tracking-wider px-2 font-bold font-mono">
+              Recents
+            </div>
+            <div 
+              onClick={() => {
+                setMessages([
+                  {
+                    id: "msg-1",
+                    sender: "user",
+                    content: "What is the recommended pharmacological treatment for stage 2 hypertension in elderly patients with CKD?",
+                    timestamp: "10:42 AM",
+                  },
+                  {
+                    id: "msg-2",
+                    sender: "ai",
+                    content:
+                      "For elderly patients with stage 2 hypertension and co-existing Chronic Kidney Disease (CKD), initial monotherapy should begin with an Angiotensin Converting Enzyme (ACE) inhibitor or Angiotensin Receptor Blocker (ARB) [12]. If target blood pressure (<130/80 mmHg) is not achieved within 4 weeks, combine with a long-acting dihydropyridine calcium channel blocker (such as Amlodipine) [15]. Serum creatinine and potassium levels must be re-evaluated within 14 days of therapy initiation [18].",
+                    citations: [12, 15, 18],
+                    passages: [
+                      masterPassages[12],
+                      masterPassages[15],
+                      masterPassages[18]
+                    ],
+                    timestamp: "10:42 AM",
+                  },
+                ]);
+                setOpen(false);
+              }}
+              className="p-2 rounded-lg bg-[var(--surface-raised)] border border-white/[0.03] text-xs text-[var(--ink)] cursor-pointer truncate font-body hover:brightness-110"
+            >
+              Stage 2 HTN in Elderly CKD
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Bottom Section - User Profile (Green BH Avatar) */}
+      <motion.div 
+        animate={{
+          paddingLeft: open ? "14px" : "0px",
+          justifyContent: open ? "flex-start" : "center",
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="flex items-center w-full shrink-0 whitespace-nowrap overflow-hidden"
+      >
+        <div 
+          className="w-8.5 h-8.5 rounded-full bg-[#10B981] flex items-center justify-center text-white text-[11px] font-bold shrink-0 font-mono shadow-md"
+          title="Bhabani Shankar (Physician Evaluator)"
+        >
+          BH
+        </div>
+        <motion.div 
+          variants={profileVariants}
+          initial={false}
+          animate={open ? "open" : "closed"}
+          transition={labelTransition}
+          className="flex flex-col text-left whitespace-nowrap overflow-hidden"
+        >
+          <span className="text-xs font-semibold text-[var(--ink)] leading-none">Bhabani Shankar</span>
+          <span className="text-[8px] text-[var(--ink-faint)] font-mono mt-1 uppercase tracking-wider">CLINICAL EVALUATOR</span>
+        </motion.div>
+      </motion.div>
+    </>
+  );
+}
+
 function ChatWorkspaceContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
 
   const [inputQuery, setInputQuery] = useState(initialQuery);
   const [activeCitationId, setActiveCitationId] = useState<number | null>(null);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false); // Collapsed by default
+  const [sidebarExpanded, setSidebarExpanded] = useState(false); // Default collapsed
   const [activeTab, setActiveTab] = useState<"chat" | "search" | "pinned">("chat");
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -144,9 +394,6 @@ function ChatWorkspaceContent() {
 
       setMessages((prev) => [...prev, aiMsg]);
       setIsLoading(false);
-      if (aiMsg.citations && aiMsg.citations.length > 0) {
-        setActiveCitationId(aiMsg.citations[0]);
-      }
     }, 1200);
   };
 
@@ -155,165 +402,18 @@ function ChatWorkspaceContent() {
   return (
     <div className="h-screen bg-[var(--void)] flex overflow-hidden selection:bg-[var(--violet-dim)] selection:text-[var(--violet)] relative">
       
-      {/* Smoothly Expandable / Contractable Sidebar Rail */}
-      <aside 
-        className="bg-black/60 border-r border-[var(--border-color)] flex flex-col justify-between py-6 shrink-0 z-30 transition-all duration-300 ease-in-out overflow-hidden"
-        style={{ width: sidebarExpanded ? "260px" : "60px" }}
-      >
-        
-        {/* Top Section Icons */}
-        <div className="flex flex-col gap-6 items-center w-full px-2">
-          
-          {/* Sidebar Toggle Header Row */}
-          <div className={`flex items-center w-full px-2 min-h-[32px] ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
-            {sidebarExpanded && (
-              <span className="font-display font-medium text-[15px] text-[var(--ink)] tracking-tight whitespace-nowrap pl-1">
-                Ayushman<span className="text-[var(--verify)] font-mono text-[10px] font-semibold ml-0.5">AI</span>
-              </span>
-            )}
-            
-            <button 
-              onClick={() => setSidebarExpanded(!sidebarExpanded)}
-              className="p-1.5 text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)] rounded-lg transition-colors shrink-0"
-              title={sidebarExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
-            >
-              {sidebarExpanded ? <PanelLeft className="w-4.5 h-4.5" /> : <PanelRight className="w-4.5 h-4.5" />}
-            </button>
-          </div>
-
-          {/* Action Divider Line */}
-          <div className="w-8 h-[1px] bg-[var(--border-color)] shrink-0" />
-
-          {/* New Chat Button */}
-          <button
-            onClick={() => {
-              setMessages([]);
-              setInputQuery("");
-              setActiveCitationId(null);
-            }}
-            className={`w-full flex items-center rounded-xl bg-[var(--surface-raised)] border border-[var(--border-color)] text-[var(--ink-dim)] hover:text-[var(--ink)] hover:border-[var(--verify)]/50 p-2.5 transition-all overflow-hidden ${
-              sidebarExpanded ? "justify-start px-3.5" : "justify-center px-0"
-            }`}
-            title="New Chat"
-          >
-            <SquarePen className="w-4.5 h-4.5 shrink-0" />
-            {sidebarExpanded && (
-              <span className="ml-3 text-xs font-semibold whitespace-nowrap">
-                New Consultation
-              </span>
-            )}
-          </button>
-
-          {/* Sidebar Nav Tabs */}
-          <div className="flex flex-col gap-2 w-full">
-            <button
-              onClick={() => setActiveTab("search")}
-              className={`w-full flex items-center rounded-xl p-2.5 transition-all overflow-hidden ${
-                activeTab === "search" 
-                  ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
-                  : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
-              } ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-              title="Search Guidelines"
-            >
-              <Search className="w-4.5 h-4.5 shrink-0" />
-              {sidebarExpanded && (
-                <span className="ml-3 text-xs whitespace-nowrap">
-                  Search Guidelines
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("pinned")}
-              className={`w-full flex items-center rounded-xl p-2.5 transition-all overflow-hidden ${
-                activeTab === "pinned" 
-                  ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
-                  : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
-              } ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-              title="Pinned References"
-            >
-              <Pin className="w-4.5 h-4.5 shrink-0" />
-              {sidebarExpanded && (
-                <span className="ml-3 text-xs whitespace-nowrap">
-                  Pinned References
-                </span>
-              )}
-            </button>
-
-            <button
-              onClick={() => setActiveTab("chat")}
-              className={`w-full flex items-center rounded-xl p-2.5 transition-all overflow-hidden ${
-                activeTab === "chat" 
-                  ? "text-[var(--verify)] bg-[var(--verify-dim)]/50 font-semibold" 
-                  : "text-[var(--ink-dim)] hover:text-[var(--ink)] hover:bg-[var(--surface-raised)]"
-              } ${sidebarExpanded ? "justify-start px-3" : "justify-center px-0"}`}
-              title="Chat History"
-            >
-              <MessageSquare className="w-4.5 h-4.5 shrink-0" />
-              {sidebarExpanded && (
-                <span className="ml-3 text-xs whitespace-nowrap">
-                  Chat History
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Collapsible Session List panel */}
-          {sidebarExpanded && activeTab === "chat" && (
-            <div className="w-full flex flex-col gap-1.5 overflow-y-auto px-2 mt-2 h-44">
-              <div className="text-[9px] text-[var(--ink-faint)] uppercase tracking-wider px-2 font-bold font-mono">
-                Recent Sessions
-              </div>
-              <div 
-                onClick={() => {
-                  setMessages([
-                    {
-                      id: "msg-1",
-                      sender: "user",
-                      content: "What is the recommended pharmacological treatment for stage 2 hypertension in elderly patients with CKD?",
-                      timestamp: "10:42 AM",
-                    },
-                    {
-                      id: "msg-2",
-                      sender: "ai",
-                      content:
-                        "For elderly patients with stage 2 hypertension and co-existing Chronic Kidney Disease (CKD), initial monotherapy should begin with an Angiotensin Converting Enzyme (ACE) inhibitor or Angiotensin Receptor Blocker (ARB) [12]. If target blood pressure (<130/80 mmHg) is not achieved within 4 weeks, combine with a long-acting dihydropyridine calcium channel blocker (such as Amlodipine) [15]. Serum creatinine and potassium levels must be re-evaluated within 14 days of therapy initiation [18].",
-                      citations: [12, 15, 18],
-                      passages: [
-                        masterPassages[12],
-                        masterPassages[15],
-                        masterPassages[18]
-                      ],
-                      timestamp: "10:42 AM",
-                    },
-                  ]);
-                }}
-                className="p-2 rounded-lg bg-[var(--surface-raised)] border border-white/[0.03] text-xs text-[var(--ink)] cursor-pointer truncate font-body hover:brightness-110"
-              >
-                Stage 2 HTN in Elderly CKD
-              </div>
-            </div>
-          )}
-
-        </div>
-
-        {/* Bottom Section - User Profile (Green BH Avatar) */}
-        <div className="flex items-center gap-3 w-full px-3.5 overflow-hidden shrink-0">
-          <div 
-            className="w-8.5 h-8.5 rounded-full bg-[#10B981] flex items-center justify-center text-white text-[11px] font-bold shrink-0 font-mono shadow-md"
-            title="Bhabanishankar (Physician Evaluator)"
-          >
-            BH
-          </div>
-          {sidebarExpanded && (
-            <div className="flex flex-col text-left overflow-hidden truncate whitespace-nowrap">
-              <span className="text-xs font-semibold text-[var(--ink)] leading-none">Bhabanishankar</span>
-              <span className="text-[8px] text-[var(--ink-faint)] font-mono mt-1 uppercase tracking-wider">CLINICAL EVALUATOR</span>
-            </div>
-          )}
-        </div>
-
-      </aside>
+      {/* Collapsible Sidebar Rail utilizing modular layout components */}
+      <Sidebar open={sidebarExpanded} setOpen={setSidebarExpanded}>
+        <SidebarBody className="justify-between gap-10">
+          <WorkspaceSidebarContent
+            setMessages={setMessages}
+            setInputQuery={setInputQuery}
+            setActiveCitationId={setActiveCitationId}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+          />
+        </SidebarBody>
+      </Sidebar>
 
       {/* Chat Workspace Main Canvas */}
       <main className="flex-1 flex flex-col min-w-0 bg-[var(--void)] relative">
@@ -330,7 +430,7 @@ function ChatWorkspaceContent() {
         </div>
 
         {/* Message Thread Scroll Stream */}
-        <div className="flex-grow overflow-y-auto px-4 sm:px-6 md:px-8 pt-24 pb-36 flex flex-col">
+        <div className="flex-grow overflow-y-auto px-04 sm:px-6 md:px-8 pt-24 pb-36 flex flex-col">
           {messages.length === 0 ? (
             
             /* Centered Claude-style Empty State */
@@ -434,9 +534,9 @@ function ChatWorkspaceContent() {
             <button
               onClick={() => handleSend()}
               disabled={!inputQuery.trim() || isLoading}
-              className="absolute right-4  w-10 h-10 rounded-full bg-[#10B981] disabled:bg-[var(--surface)] text-white disabled:text-[var(--ink-faint)] flex items-center justify-center hover:brightness-110 disabled:hover:brightness-100 hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer"
+              className="absolute right-4 w-10 h-10 rounded-full bg-[#10B981] disabled:bg-[var(--surface)] text-white disabled:text-[var(--ink-faint)] flex items-center justify-center hover:brightness-110 disabled:hover:brightness-100 hover:shadow-lg hover:shadow-emerald-500/20 transition-all cursor-pointer"
             >
-              <Send className="w-5 h-5 stroke-[2.2]" />
+              <Send className="w-5 h-5" />
             </button>
           </div>
         </div>
