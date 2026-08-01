@@ -264,43 +264,52 @@ function WorkspaceSidebarContent({
           </motion.button>
         </div>
 
-        {/* Collapsible Session List panel */}
-        {open && activeTab === "chat" && (
-          <div className="w-full flex flex-col gap-1.5 overflow-y-auto px-2 mt-2 h-44 transition-all duration-300">
-            <div className="text-[9px] text-[var(--ink-faint)] uppercase tracking-wider px-2 font-bold font-mono">
-              Recents
-            </div>
-            <div 
-              onClick={() => {
-                setMessages([
-                  {
-                    id: "msg-1",
-                    sender: "user",
-                    content: "What is the recommended pharmacological treatment for stage 2 hypertension in elderly patients with CKD?",
-                    timestamp: "10:42 AM",
-                  },
-                  {
-                    id: "msg-2",
-                    sender: "ai",
-                    content:
-                      "For elderly patients with stage 2 hypertension and co-existing Chronic Kidney Disease (CKD), initial monotherapy should begin with an Angiotensin Converting Enzyme (ACE) inhibitor or Angiotensin Receptor Blocker (ARB) [12]. If target blood pressure (<130/80 mmHg) is not achieved within 4 weeks, combine with a long-acting dihydropyridine calcium channel blocker (such as Amlodipine) [15]. Serum creatinine and potassium levels must be re-evaluated within 14 days of therapy initiation [18].",
-                    citations: [12, 15, 18],
-                    passages: [
-                      masterPassages[12],
-                      masterPassages[15],
-                      masterPassages[18]
-                    ],
-                    timestamp: "10:42 AM",
-                  },
-                ]);
-                setOpen(false);
-              }}
-              className="p-2 rounded-lg bg-[var(--surface-raised)] border border-white/[0.03] text-xs text-[var(--ink)] cursor-pointer truncate font-body hover:brightness-110"
-            >
-              Stage 2 HTN in Elderly CKD
-            </div>
+        <motion.div
+          initial={false}
+          animate={{
+            height: (open && activeTab === "chat") ? 176 : 0,
+            opacity: (open && activeTab === "chat") ? 1 : 0,
+            marginTop: (open && activeTab === "chat") ? 8 : 0,
+          }}
+          transition={{
+            height: { type: "spring", stiffness: 300, damping: 30 },
+            opacity: { duration: 0.2 }
+          }}
+          className="w-full flex flex-col gap-1.5 overflow-y-auto px-2 overflow-x-hidden whitespace-nowrap shrink-0"
+        >
+          <div className="text-[9px] text-[var(--ink-faint)] uppercase tracking-wider px-2 font-bold font-mono">
+            Recent Sessions
           </div>
-        )}
+          <div 
+            onClick={() => {
+              setMessages([
+                {
+                  id: "msg-1",
+                  sender: "user",
+                  content: "What is the recommended pharmacological treatment for stage 2 hypertension in elderly patients with CKD?",
+                  timestamp: "10:42 AM",
+                },
+                {
+                  id: "msg-2",
+                  sender: "ai",
+                  content:
+                    "For elderly patients with stage 2 hypertension and co-existing Chronic Kidney Disease (CKD), initial monotherapy should begin with an Angiotensin Converting Enzyme (ACE) inhibitor or Angiotensin Receptor Blocker (ARB) [12]. If target blood pressure (<130/80 mmHg) is not achieved within 4 weeks, combine with a long-acting dihydropyridine calcium channel blocker (such as Amlodipine) [15]. Serum creatinine and potassium levels must be re-evaluated within 14 days of therapy initiation [18].",
+                  citations: [12, 15, 18],
+                  passages: [
+                    masterPassages[12],
+                    masterPassages[15],
+                    masterPassages[18]
+                  ],
+                  timestamp: "10:42 AM",
+                },
+              ]);
+              setOpen(false);
+            }}
+            className="p-2 rounded-lg bg-[var(--surface-raised)] border border-white/[0.03] text-xs text-[var(--ink)] cursor-pointer truncate font-body hover:brightness-110"
+          >
+            Stage 2 HTN in Elderly CKD
+          </div>
+        </motion.div>
 
       </div>
 
