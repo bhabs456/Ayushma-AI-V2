@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.models.chat import ChatRequest, ChatResponse
 from app.services.rag_chain import ask_ayushman_ai
+from app.services.vector_store import get_indexed_files
 from app.config import settings
 
 app = FastAPI(
@@ -25,6 +26,18 @@ def health_check():
         "service": "Ayushman-AI RAG API",
         "model": "gemini-flash-lite-latest"
     }
+
+@app.get("/api/documents")
+def get_documents_endpoint():
+    try:
+        files = get_indexed_files()
+        return {
+            "status": "success",
+            "count": len(files),
+            "documents": files
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch documents: {str(e)}")
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest):
