@@ -5,6 +5,7 @@ from typing import List, Optional
 class CitationItem(BaseModel):
     page: int
     snippet: str
+    sourceDoc: Optional[str] = "Unknown Document"
 
 class HistoryItem(BaseModel):
     sender: str  # "user" or "ai"

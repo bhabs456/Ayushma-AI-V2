@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { DirectionalText } from "@/components/DirectionalText";
 
 interface NavbarProps {
   activePage?: "home" | "chat" | "login" | "signup";
@@ -29,30 +30,29 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
         {/* Logo */}
         <Link
           href="/"
-          className="font-body font-semibold text-[15px] tracking-tight text-[var(--ink)] hover:opacity-90 transition-opacity shrink-0"
+          className="font-body font-semibold text-[15px] tracking-tight shrink-0"
         >
-          Ayushman<span className="text-[var(--verify)]">.</span>AI
+          <DirectionalText activeColor="var(--verify)" restingColor="var(--ink)">
+            Ayushman.AI
+          </DirectionalText>
         </Link>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-7 text-[13px] font-medium">
-          <a
-            href="#how-it-works"
-            className="text-[var(--ink-dim)] hover:text-[var(--ink)] transition-colors"
-          >
-            How it works
+          <a href="#how-it-works">
+            <DirectionalText activeColor="var(--ink)" restingColor="var(--ink-dim)">
+              How it works
+            </DirectionalText>
           </a>
-          <a
-            href="#who-uses-it"
-            className="text-[var(--ink-dim)] hover:text-[var(--ink)] transition-colors"
-          >
-            Use cases
+          <a href="#who-uses-it">
+            <DirectionalText activeColor="var(--ink)" restingColor="var(--ink-dim)">
+              Use cases
+            </DirectionalText>
           </a>
-          <Link
-            href="/chat"
-            className="text-[var(--ink-dim)] hover:text-[var(--ink)] transition-colors"
-          >
-            Try it
+          <Link href="/chat">
+            <DirectionalText activeColor="var(--ink)" restingColor="var(--ink-dim)">
+              Try it
+            </DirectionalText>
           </Link>
           <Link
             href="/login"

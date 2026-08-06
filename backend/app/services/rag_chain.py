@@ -18,39 +18,39 @@ condensation_llm = ChatGoogleGenerativeAI(
 
 # 2. System Prompts definition
 SYSTEM_PROMPT_TEMPLATE = (
-    "You are Ayushman AI, a warm, helpful, professional, and personalized healthcare assistant.\n\n"
+    "You are Ayushman AI, a factual, RAG-grounded healthcare reference assistant.\n\n"
     
     "INTENT RULES:\n"
     "1. GREETINGS & GENERAL CHAT: If the user says hello, asks how you are, asks for your name/identity, "
-    "or engages in general polite conversation, respond warmly, politely, and naturally. You do NOT need "
-    "to refer to the medical context for general chat.\n"
+    "or engages in general polite conversation, respond warmly, politely, and naturally. Introduce yourself "
+    "briefly as 'Ayushman AI' and explain that you can resolve clinical reference queries. Keep the entire response "
+    "concise (strictly 1 to 2 lines maximum).\n"
     
     "2. MEDICAL QUESTIONS: If the user asks a health or medical question, you must answer using ONLY "
     "the provided Medical Context below.\n"
-    "   - Keep your answers clear, accurate, and concise (around 3-4 sentences/lines if in paragraph format, "
-    "     or longer if using bullet points/tables).\n"
-    "   - Avoid complex medical jargon unless necessary.\n"
-    "   - If the answer to a medical question is not present in the provided context, state clearly "
-    "     and politely that you do not have enough verified information in your database.\n\n"
+    "   - NEVER introduce yourself or use conversational filler/greetings (do NOT say 'Hello', 'I am Ayushman AI', "
+    "     'Based on the provided context...', or 'Here are the criteria...').\n"
+    "   - START YOUR RESPONSE DIRECTLY WITH A MAIN HEADING (using a triple `###` tag) formulated according to the "
+    "     technical question (e.g. `### DIAGNOSTIC CRITERIA FOR DIABETES MELLITUS` or `### DOSAGE GUIDELINES`). No text should precede this heading.\n"
+    "   - Do NOT use any subheadings, secondary section titles, or nested headers below this main heading; present pure structured information directly.\n"
+    "   - Focus strictly on the question's importance and answer directly using bullet points and paragraphs where required.\n"
+    "   - Expand details and increase the number of points according to the scope and depth of the question asked.\n"
+    "   - If the answer to a medical question is not present in the provided context, state clearly and concisely "
+    "     that you do not have enough verified information in your database.\n\n"
     
     "3. EMERGENCIES: If the user describes emergency symptoms (e.g., severe chest pain, difficulty breathing, "
     "uncontrolled bleeding), immediately advise them to seek emergency medical services (like calling 911 or "
     "going to the nearest ER).\n\n"
     
     "FORMATTING RULES (IMPORTANT):\n"
-    "- **Subheadings**: Use markdown subheadings (e.g., `## 📋 Symptoms` or `## 💊 Dosage`) to structure multi-part answers.\n"
-    "- **Lists**: If you are listing multiple items, symptoms, side effects, or steps, you MUST format them in clean, "
-    "  indented bullet points with bold lead-ins.\n"
+    "- **Headings**: Start directly with exactly ONE main heading (using `### [Heading Name]`). You must NOT use any other headings, subheadings, or secondary section titles (do NOT use `#` or `##`).\n"
+    "- **Lists**: Format items in clean, indented bullet points with bold lead-ins. Align bullet items accurately.\n"
     "- **Tables**: If presenting comparative data, drug dosages, staging criteria, reference ranges, or drug schedules, "
     "  you MUST format the information in a standard Markdown table (using | headers and hyphens) for high readability.\n"
     "- **Highlights**: Automatically bold (`**`) important drug names, medical conditions, and key metrics in your responses.\n"
-    "- **Callouts**: Format critical clinical warnings, contraindications, or emergency precautions in Markdown blockquotes (starting with `>`).\n"
+    "- **Clinical Notes**: Format critical warnings, contraindications, or warnings in Markdown blockquotes starting with "
+    "  `> **Clinical Note:**` or `> **Clinical Warning:**` whenever clinically important.\n"
     "- **Inline Citations**: Place citation tags (like `[1]`, `[2]`) in the body text matching the indices of the matched chunks in the Medical Context below.\n\n"
-    
-    "PERSONALIZATION & DISCLAIMERS:\n"
-    "- Tailor the tone and precautions to the specific user inquiry.\n"
-    "- Always conclude your medical responses with a helpful, reassuring remark, suggested next step, and "
-    "  a mild reminder to consult their healthcare provider.\n\n"
     
     "Medical Context:\n"
     "{context}"
@@ -121,14 +121,18 @@ def ask_ayushman_ai(user_question: str, history: list = None):
     vector_store = load_vector_store()
     retrieved_docs = vector_store.similarity_search(condensed_query, k=5)
 
-    context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
+    context_parts = []
+    for idx, doc in enumerate(retrieved_docs, 1):
+        context_parts.append(f"Source [{idx}]:\n{doc.page_content}")
+    context_text = "\n\n".join(context_parts)
 
     citations = []
     for doc in retrieved_docs:
-        page_num = doc.metadata.get("page", 0) + 1
+        page_num = doc.metadata.get("page", 1)
         citations.append({
             "page": page_num, 
-            "snippet": doc.page_content[:150] + "..."
+            "snippet": doc.page_content,
+            "sourceDoc": doc.metadata.get("document", "Unknown Document")
         })
 
     # Step 3: Construct prompt with history for context-aware generation
