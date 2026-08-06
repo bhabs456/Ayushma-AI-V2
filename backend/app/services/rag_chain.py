@@ -3,16 +3,22 @@ from langchain_core.prompts import ChatPromptTemplate
 from app.config import settings
 from app.services.vector_store import load_vector_store
 
-# 1. Initialize Gemini LLM with working model
+# 1. Initialize Gemini LLMs (low temperature for condensation, standard for answering)
 llm = ChatGoogleGenerativeAI(
     model="gemini-flash-lite-latest",
     temperature=0.3,
     google_api_key=settings.GEMINI_API_KEY
 )
 
-# 2. System Prompt definition
+condensation_llm = ChatGoogleGenerativeAI(
+    model="gemini-flash-lite-latest",
+    temperature=0.1,
+    google_api_key=settings.GEMINI_API_KEY
+)
+
+# 2. System Prompts definition
 SYSTEM_PROMPT_TEMPLATE = (
-    "You are Ayushman AI, a warm, helpful, and professional healthcare assistant.\n\n"
+    "You are Ayushman AI, a warm, helpful, professional, and personalized healthcare assistant.\n\n"
     
     "INTENT RULES:\n"
     "1. GREETINGS & GENERAL CHAT: If the user says hello, asks how you are, asks for your name/identity, "
@@ -21,7 +27,8 @@ SYSTEM_PROMPT_TEMPLATE = (
     
     "2. MEDICAL QUESTIONS: If the user asks a health or medical question, you must answer using ONLY "
     "the provided Medical Context below.\n"
-    "   - Keep your medical answers clear, accurate, and simple (maximum 3 sentences).\n"
+    "   - Keep your answers clear, accurate, and concise (around 3-4 sentences/lines if in paragraph format, "
+    "     or longer if using bullet points/tables).\n"
     "   - Avoid complex medical jargon unless necessary.\n"
     "   - If the answer to a medical question is not present in the provided context, state clearly "
     "     and politely that you do not have enough verified information in your database.\n\n"
@@ -30,45 +37,113 @@ SYSTEM_PROMPT_TEMPLATE = (
     "uncontrolled bleeding), immediately advise them to seek emergency medical services (like calling 911 or "
     "going to the nearest ER).\n\n"
     
-    "Always conclude your responses with a helpful, encouraging remark or a suggested next step.\n\n"
+    "FORMATTING RULES (IMPORTANT):\n"
+    "- **Subheadings**: Use markdown subheadings (e.g., `## 📋 Symptoms` or `## 💊 Dosage`) to structure multi-part answers.\n"
+    "- **Lists**: If you are listing multiple items, symptoms, side effects, or steps, you MUST format them in clean, "
+    "  indented bullet points with bold lead-ins.\n"
+    "- **Tables**: If presenting comparative data, drug dosages, staging criteria, reference ranges, or drug schedules, "
+    "  you MUST format the information in a standard Markdown table (using | headers and hyphens) for high readability.\n"
+    "- **Highlights**: Automatically bold (`**`) important drug names, medical conditions, and key metrics in your responses.\n"
+    "- **Callouts**: Format critical clinical warnings, contraindications, or emergency precautions in Markdown blockquotes (starting with `>`).\n"
+    "- **Inline Citations**: Place citation tags (like `[1]`, `[2]`) in the body text matching the indices of the matched chunks in the Medical Context below.\n\n"
+    
+    "PERSONALIZATION & DISCLAIMERS:\n"
+    "- Tailor the tone and precautions to the specific user inquiry.\n"
+    "- Always conclude your medical responses with a helpful, reassuring remark, suggested next step, and "
+    "  a mild reminder to consult their healthcare provider.\n\n"
     
     "Medical Context:\n"
     "{context}"
 )
 
-prompt = ChatPromptTemplate.from_messages(
-    [("system", SYSTEM_PROMPT_TEMPLATE), ("human", "{question}")]
+CONDENSE_QUESTION_TEMPLATE = (
+    "Given the following conversation history and a follow-up question, "
+    "rephrase the follow-up question to be a STANDALONE question, "
+    "incorporating necessary context from the conversation history.\n\n"
+    "RULES:\n"
+    "1. Do NOT answer the question. Only output the standalone rephrased question.\n"
+    "2. If the follow-up question is already a standalone question or introduces a new topic, "
+    "   return it exactly as it is.\n\n"
+    "Chat History:\n"
+    "{chat_history}\n\n"
+    "Follow-Up Input: {question}\n"
+    "Standalone Question:"
+)
+
+condense_prompt = ChatPromptTemplate.from_messages(
+    [("human", CONDENSE_QUESTION_TEMPLATE)]
 )
 
 
-def ask_ayushman_ai(user_question: str):
+def extract_clean_text(content):
+    """
+    Safely extracts string text from LangChain message content regardless of if it
+    is returned as a string or as a list of content blocks.
+    """
+    if isinstance(content, list) and len(content) > 0:
+        return content[0].get("text", str(content))
+    elif isinstance(content, str):
+        return content
+    else:
+        return str(content)
+
+
+def ask_ayushman_ai(user_question: str, history: list = None):
     """
     RAG Pipeline Function:
-    1. Searches FAISS for top 3 matching medical context chunks.
-    2. Passes retrieved context + user question to Gemini (gemini-flash-lite-latest).
-    3. Returns response string + source citations list.
+    1. Rephrases follow-up questions to standalone queries using chat history.
+    2. Searches FAISS for matching medical context chunks (k=5 depth).
+    3. Generates responses using history context + current query.
+    4. Returns response string + source citations list.
     """
+    # Step 1: Condense follow-up query if history exists
+    condensed_query = user_question
+    if history and len(history) > 0:
+        history_text = ""
+        for item in history:
+            role = "User" if getattr(item, "sender", "user") == "user" else "Assistant"
+            content = getattr(item, "content", "")
+            history_text += f"{role}: {content}\n"
+            
+        try:
+            condense_input = condense_prompt.format_messages(
+                chat_history=history_text, question=user_question
+            )
+            condense_response = condensation_llm.invoke(condense_input)
+            response_content = extract_clean_text(condense_response.content).strip()
+            if response_content:
+                condensed_query = response_content
+                print(f"🔄 Condensed Query: '{condensed_query}' (Original: '{user_question}')")
+        except Exception as e:
+            print(f"⚠️ Query condensation failed, falling back to original: {e}")
+
+    # Step 2: Vector Search using condensed query (increased depth to k=5)
     vector_store = load_vector_store()
-    retrieved_docs = vector_store.similarity_search(user_question, k=3)
+    retrieved_docs = vector_store.similarity_search(condensed_query, k=5)
 
     context_text = "\n\n".join([doc.page_content for doc in retrieved_docs])
 
     citations = []
     for doc in retrieved_docs:
         page_num = doc.metadata.get("page", 0) + 1
-        citations.append({"page": page_num, "snippet": doc.page_content[:150] + "..."})
+        citations.append({
+            "page": page_num, 
+            "snippet": doc.page_content[:150] + "..."
+        })
 
-    formatted_prompt = prompt.format_messages(
-        context=context_text, question=user_question
-    )
+    # Step 3: Construct prompt with history for context-aware generation
+    messages = [("system", SYSTEM_PROMPT_TEMPLATE.replace("{context}", context_text))]
+    if history:
+        for item in history:
+            role = "human" if getattr(item, "sender", "user") == "user" else "ai"
+            messages.append((role, getattr(item, "content", "")))
+    messages.append(("human", "{question}"))
+    
+    final_prompt = ChatPromptTemplate.from_messages(messages)
+    formatted_final_prompt = final_prompt.format_messages(question=user_question)
 
-    ai_response = llm.invoke(formatted_prompt)
-    # Clean text extraction logic
-    if isinstance(ai_response.content, list) and len(ai_response.content) > 0:
-        clean_response = ai_response.content[0].get("text", str(ai_response.content))
-    elif isinstance(ai_response.content, str):
-        clean_response = ai_response.content
-    else:
-        clean_response = str(ai_response.content)
+    ai_response = llm.invoke(formatted_final_prompt)
+    
+    clean_response = extract_clean_text(ai_response.content)
 
     return {"response": clean_response, "citations": citations}

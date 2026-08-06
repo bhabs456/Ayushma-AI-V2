@@ -6,8 +6,13 @@ class CitationItem(BaseModel):
     page: int
     snippet: str
 
+class HistoryItem(BaseModel):
+    sender: str  # "user" or "ai"
+    content: str
+
 class ChatRequest(BaseModel):
     message: str
+    history: Optional[List[HistoryItem]] = None
 
 class ChatResponse(BaseModel):
     response: str
