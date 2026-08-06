@@ -11,6 +11,7 @@ import { EmptyState } from "./components/EmptyState";
 import { MessageStream } from "./components/MessageStream";
 import { MessageInput } from "./components/MessageInput";
 import { CitationDrawer } from "./components/CitationDrawer";
+import { RippleEffect } from "@/components/Ripple_Effect";
 
 interface Passage {
   id: number;
@@ -40,6 +41,30 @@ function ChatWorkspaceContent() {
   const [activeTab, setActiveTab] = useState<"chat" | "search" | "pinned">("chat");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  // Load consultation history from sessionStorage on mount (client-side)
+  React.useEffect(() => {
+    const saved = sessionStorage.getItem("ayushman_chat_history");
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch (e) {
+        console.warn("Failed to load saved consultation session:", e);
+      }
+    }
+    // Complete initialization after loading history
+    setIsInitializing(false);
+  }, []);
+
+  // Sync consultation messages with sessionStorage on updates
+  React.useEffect(() => {
+    if (messages.length > 0) {
+      sessionStorage.setItem("ayushman_chat_history", JSON.stringify(messages));
+    } else {
+      sessionStorage.removeItem("ayushman_chat_history");
+    }
+  }, [messages]);
 
   const starterPrompts = [
     { label: "Diabetes Threshold", query: "What is the diagnostic threshold for diabetes mellitus?" },
@@ -104,15 +129,17 @@ function ChatWorkspaceContent() {
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
-      console.error("Error communicating with Ayushman-AI API:", err);
-      const errorMsg: Message = {
+      console.warn("Clinical server connection issue:", err.message || err);
+      
+      const offlineMsg: Message = {
         id: `msg-${Date.now() + 1}`,
         sender: "ai",
-        content: `Error connecting to clinical database: ${err.message || "Unknown connection error"}. Please make sure the backend server is running on http://127.0.0.1:8000.`,
+        content: "### ⚠️ Connection Offline\n\nI am currently operating in **offline fallback mode** because I could not establish a connection with the clinical reference server.\n\n*   **Server Status**: Offline (Failed to fetch from `http://127.0.0.1:8000`)\n*   **Instructions**: Please run the backend API server by activating your virtual environment and running `python app.py` inside the `backend` directory.\n\nLive page-level source grounding will remain disabled until the connection is restored.",
         unverified: true,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      
+      setMessages((prev) => [...prev, offlineMsg]);
     } finally {
       setIsLoading(false);
     }
@@ -121,6 +148,10 @@ function ChatWorkspaceContent() {
   const activePassage = activeCitationId !== null
     ? messages.flatMap((m) => m.passages || []).find((p) => p.id === activeCitationId) || null
     : null;
+
+  if (isInitializing) {
+    return <RippleEffect />;
+  }
 
   return (
     <div className="h-screen bg-[var(--void)] flex overflow-hidden selection:bg-[var(--violet-dim)] selection:text-[var(--violet)] relative">
@@ -145,6 +176,7 @@ function ChatWorkspaceContent() {
         <div className="absolute top-4 right-4 flex items-center justify-end z-20">
           <Link 
             href="/" 
+            onClick={() => sessionStorage.removeItem("ayushman_chat_history")}
             className="text-xs font-mono text-[var(--ink-dim)] hover:text-[var(--ink)] bg-[var(--surface)] border border-[var(--border-color)] px-3 py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
           >
             <ArrowLeft className="w-3.5 h-3.5" />

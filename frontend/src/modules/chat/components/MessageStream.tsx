@@ -34,17 +34,27 @@ export function MessageStream({
   activeCitationId,
   onSelectCitation,
 }: MessageStreamProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll on new message entry
+  // Auto-scroll on new message entry with a 100ms render buffer
   useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
+    const timer = setTimeout(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages, isLoading]);
 
   return (
-    <div className="flex-grow overflow-y-auto px-4 sm:px-6 md:px-8 pt-24 pb-36 flex flex-col">
+    <div 
+      ref={scrollContainerRef}
+      className="flex-grow overflow-y-auto px-4 sm:px-6 md:px-8 pt-24 pb-36 flex flex-col"
+    >
       <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6 md:gap-8 px-4 sm:px-6">
         {messages.map((msg) => (
           <MessageBubble
@@ -65,7 +75,7 @@ export function MessageStream({
             </span>
           </div>
         )}
-        <div ref={containerRef} />
+        <div ref={bottomRef} />
       </div>
     </div>
   );
