@@ -13,6 +13,7 @@ load_dotenv()
 
 class Settings:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    ENABLE_GEMINI: bool = os.getenv("ENABLE_GEMINI", "True").lower() == "true"
     DATASET_PATH: str = os.getenv("DATASET_PATH", "data/dataset.pdf")
     VECTOR_STORE_DIR: str = os.getenv("VECTOR_STORE_DIR", "vector_store")
     EMBEDDINGS_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"

@@ -96,9 +96,15 @@ def ask_ayushman_ai(user_question: str, history: list = None):
     3. Generates responses using history context + current query.
     4. Returns response string + source citations list.
     """
+    if not settings.ENABLE_GEMINI:
+        return {
+            "response": "### SYSTEM OFFLINE\nThe Gemini API service is currently disabled. Please check your configuration or try again later.",
+            "citations": []
+        }
+
     # Step 1: Condense follow-up query if history exists
     condensed_query = user_question
-    if history and len(history) > 0:
+    if settings.ENABLE_GEMINI and history and len(history) > 0:
         history_text = ""
         for item in history:
             role = "User" if getattr(item, "sender", "user") == "user" else "Assistant"
