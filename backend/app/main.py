@@ -1,15 +1,35 @@
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.db.schema.user import UserOutput
 from app.models.chat import ChatRequest, ChatResponse
+from app.routers.auth import authRouter
 from app.services.rag_chain import ask_ayushman_ai
 from app.services.vector_store import get_indexed_files
-from app.config import settings
+from app.util.init_db import create_tables
+from app.util.protectRoute import get_current_user
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Intialize Db at start
+    create_tables()
+    yield #seperation point
+
 
 app = FastAPI(
     title="Ayushman-AI RAG Medical API",
     description="Factual, RAG-grounded Medical Knowledge REST API.",
     version="2.0.0",
+    lifespan=lifespan
 )
+
+app.include_router(authRouter, prefix="/auth", tags=["Authentication"])
+# /auth/login
+# /auth/signup
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +46,12 @@ def health_check():
         "status": "healthy",
         "service": "Ayushman-AI RAG API",
         "model": "gemini-flash-lite-latest",
+    }
+
+@app.get("/protected")
+def read_protected(user: UserOutput = Depends(get_current_user)):
+    return {
+        "data": user
     }
 
 

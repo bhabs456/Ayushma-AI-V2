@@ -1,0 +1,33 @@
+# macOS system files
+.DS_Store
+**/.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Backend virtual environments and packages
+backend/venv/
+backend/.venv/
+backend/venv_old/
+backend/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache/
+
+# Databases & local files
+backend/vector_store/
+backend/test.db
+backend/app.db
+backend/*.db
+backend/.env
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
