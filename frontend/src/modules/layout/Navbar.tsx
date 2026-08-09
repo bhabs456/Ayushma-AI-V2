@@ -55,7 +55,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
             </DirectionalText>
           </Link>
           <Link
-            href="/login"
+            href="/auth"
             className="flex items-center justify-center bg-[var(--verify)] text-[var(--void)] font-semibold text-[13px] px-5 py-2 rounded-lg hover:brightness-110 transition-all duration-200 shadow-sm"
           >
             Log in
@@ -111,7 +111,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
             Try it
           </Link>
           <Link
-            href="/login"
+            href="/auth"
             onClick={() => setMobileOpen(false)}
             className="flex items-center justify-center bg-[var(--verify)] text-[var(--void)] font-semibold text-sm px-5 py-2.5 rounded-lg hover:brightness-110 transition-all mt-2"
           >
