@@ -11,11 +11,44 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
+  const [user, setUser] = useState<{ first_name: string; last_name: string } | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Fetch logged in user details if token exists
+  useEffect(() => {
+    setMounted(true);
+    const token = localStorage.getItem('token');
+    if (token) {
+      setHasToken(true);
+      fetch('http://127.0.0.1:8000/protected', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        if (data.data) {
+          setUser(data.data);
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        setUser(null);
+        setHasToken(false);
+      });
+    } else {
+      setHasToken(false);
+    }
   }, []);
 
   return (
@@ -54,12 +87,26 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
               Try it
             </DirectionalText>
           </Link>
-          <Link
-            href="/auth"
-            className="flex items-center justify-center bg-[var(--verify)] text-[var(--void)] font-semibold text-[13px] px-5 py-2 rounded-lg hover:brightness-110 transition-all duration-200 shadow-sm"
-          >
-            Log in
-          </Link>
+          
+          {!mounted || hasToken === null ? (
+            <div className="w-20 h-[30px]" />
+          ) : hasToken ? (
+            <div
+              className="flex items-center gap-2 bg-neutral-900/40 border border-white/5 text-neutral-300 font-semibold text-[12px] px-3.5 py-1.5 rounded-lg select-none"
+            >
+              <div className="w-5 h-5 rounded-full bg-[var(--verify)]/80 flex items-center justify-center text-[var(--void)] text-[9px] font-bold font-mono shadow-sm">
+                {user ? ((user.first_name?.[0] || '') + (user.last_name?.[0] || '')).toUpperCase() : 'U'}
+              </div>
+              <span>Workspace</span>
+            </div>
+          ) : (
+            <Link
+              href="/auth"
+              className="flex items-center justify-center bg-[var(--verify)] text-[var(--void)] font-semibold text-[13px] px-5 py-2 rounded-lg hover:brightness-110 transition-all duration-200 shadow-sm"
+            >
+              Log in
+            </Link>
+          )}
         </nav>
 
         {/* Mobile hamburger */}
@@ -110,13 +157,27 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
           >
             Try it
           </Link>
-          <Link
-            href="/auth"
-            onClick={() => setMobileOpen(false)}
-            className="flex items-center justify-center bg-[var(--verify)] text-[var(--void)] font-semibold text-sm px-5 py-2.5 rounded-lg hover:brightness-110 transition-all mt-2"
-          >
-            Log in
-          </Link>
+
+          {!mounted || hasToken === null ? (
+            <div className="w-full h-11" />
+          ) : hasToken ? (
+            <div
+              className="flex items-center justify-between border border-white/5 bg-neutral-900/40 text-neutral-300 font-semibold text-sm px-5 py-2.5 rounded-lg select-none"
+            >
+              <span>Workspace</span>
+              <div className="w-6 h-6 rounded-full bg-[var(--verify)]/80 flex items-center justify-center text-[var(--void)] text-[10px] font-bold font-mono">
+                {user ? ((user.first_name?.[0] || '') + (user.last_name?.[0] || '')).toUpperCase() : 'U'}
+              </div>
+            </div>
+          ) : (
+            <Link
+              href="/auth"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-center bg-[var(--verify)] text-[var(--void)] font-semibold text-sm px-5 py-2.5 rounded-lg hover:brightness-110 transition-all mt-2"
+            >
+              Log in
+            </Link>
+          )}
         </div>
       )}
     </div>

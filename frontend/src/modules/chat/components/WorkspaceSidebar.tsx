@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { MessageSquare, Search, Pin, PanelRight, PanelLeft, SquarePen } from "lucide-react";
+import { MessageSquare, Search, Pin, PanelRight, PanelLeft, SquarePen, LogOut } from "lucide-react";
 import { useSidebar } from "@/modules/layout/sidebar";
+import Link from "next/link";
 
 interface Passage {
   id: number;
@@ -39,6 +40,45 @@ export function WorkspaceSidebar({
   setActiveTab
 }: WorkspaceSidebarProps) {
   const { open, setOpen } = useSidebar();
+  const [hasToken, setHasToken] = useState<boolean | null>(null);
+  const [user, setUser] = useState<{ first_name: string; last_name: string; category: string } | null>(null);
+
+  // Fetch logged in user details if token exists
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setHasToken(true);
+      fetch('http://127.0.0.1:8000/protected', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error();
+        return res.json();
+      })
+      .then(data => {
+        if (data.data) {
+          setUser(data.data);
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('token');
+        setUser(null);
+        setHasToken(false);
+      });
+    } else {
+      setHasToken(false);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    const confirmLogout = window.confirm("Are you sure you want to log out?");
+    if (confirmLogout) {
+      localStorage.removeItem('token');
+      window.location.href = '/';
+    }
+  };
 
   const labelVariants = {
     open: { width: "auto", opacity: 1, marginLeft: 12, display: "inline-block" },
@@ -226,32 +266,61 @@ export function WorkspaceSidebar({
 
       </div>
 
-      {/* Bottom Section - User Profile (Green BH Avatar) */}
-      <motion.div 
-        animate={{
-          paddingLeft: open ? "14px" : "0px",
-          justifyContent: open ? "flex-start" : "center",
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="flex items-center w-full shrink-0 whitespace-nowrap overflow-hidden"
-      >
-        <div 
-          className="w-8.5 h-8.5 rounded-full bg-[#10B981] flex items-center justify-center text-white text-[11px] font-bold shrink-0 font-mono shadow-md"
-          title="Bhabani Shankar (Physician Evaluator)"
-        >
-          BH
-        </div>
+      {/* Bottom Section - User Profile (Dynamic Avatar / Guest) */}
+      {hasToken !== null && (
         <motion.div 
-          variants={profileVariants}
-          initial={false}
-          animate={open ? "open" : "closed"}
-          transition={labelTransition}
-          className="flex flex-col text-left whitespace-nowrap overflow-hidden"
+          animate={{
+            paddingLeft: open ? "14px" : "0px",
+            justifyContent: open ? "flex-start" : "center",
+          }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className="flex items-center w-full shrink-0 whitespace-nowrap overflow-hidden relative animate-fade-in"
         >
-          <span className="text-xs font-semibold text-[var(--ink)] leading-none">Bhabani Shankar</span>
-          <span className="text-[8px] text-[var(--ink-faint)] font-mono mt-1 uppercase tracking-wider">CLINICAL EVALUATOR</span>
+          <div 
+            className={`w-8.5 h-8.5 rounded-full flex items-center justify-center text-white text-[11px] font-bold shrink-0 font-mono shadow-md ${
+              hasToken ? 'bg-[#10B981]' : 'bg-neutral-800 border border-white/5 text-neutral-400'
+            }`}
+            title={user ? `${user.first_name} ${user.last_name} (${user.category})` : (hasToken ? "Loading Workspace..." : "Guest Session")}
+          >
+            {user ? ((user.first_name?.[0] || '') + (user.last_name?.[0] || '')).toUpperCase() || 'U' : (hasToken ? 'U' : 'G')}
+          </div>
+          
+          <motion.div 
+            variants={profileVariants}
+            initial={false}
+            animate={open ? "open" : "closed"}
+            transition={labelTransition}
+            className="flex flex-col text-left whitespace-nowrap overflow-hidden pr-2"
+          >
+            <span className="text-xs font-semibold text-[var(--ink)] leading-none truncate max-w-[120px]">
+              {user ? `${user.first_name} ${user.last_name}` : (hasToken ? "Loading Session..." : "Guest")}
+            </span>
+            <span className="text-[8px] text-[var(--ink-faint)] font-mono mt-1 uppercase tracking-wider truncate max-w-[120px]">
+              {user ? user.category.toUpperCase() : (hasToken ? "AUTHORIZING..." : "UNAUTHORIZED SESSION")}
+            </span>
+          </motion.div>
+
+          {/* Dynamic Logout / Login toggle link based on guest mode */}
+          {open && (
+            hasToken ? (
+              <button
+                onClick={handleLogout}
+                className="ml-auto p-1.5 text-neutral-500 hover:text-rose-400 hover:bg-white/5 rounded-lg transition-colors cursor-pointer shrink-0"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            ) : (
+              <Link
+                href="/auth"
+                className="ml-auto text-[10px] text-[var(--verify)] hover:underline font-bold uppercase tracking-wider shrink-0"
+              >
+                Log In
+              </Link>
+            )
+          )}
         </motion.div>
-      </motion.div>
+      )}
     </>
   );
 }
