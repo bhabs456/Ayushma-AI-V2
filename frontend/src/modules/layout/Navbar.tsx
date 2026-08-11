@@ -109,6 +109,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage = "home" }) => {
           )}
         </nav>
 
+
+
         {/* Mobile hamburger */}
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
