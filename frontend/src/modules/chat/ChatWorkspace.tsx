@@ -31,6 +31,8 @@ interface Message {
   timestamp: string;
 }
 
+const GUEST_ID_FALLBACK = "GUEST_SESSION_ID";
+
 function ChatWorkspaceContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
@@ -42,20 +44,58 @@ function ChatWorkspaceContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Load consultation history from sessionStorage on mount (client-side)
+  // Session verification and route protection
   React.useEffect(() => {
-    const saved = sessionStorage.getItem("ayushman_chat_history");
-    if (saved) {
-      try {
-        setMessages(JSON.parse(saved));
-      } catch (e) {
-        console.warn("Failed to load saved consultation session:", e);
-      }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setAuthorized(false);
+      window.location.replace("/auth?required=true");
+      return;
     }
-    // Complete initialization after loading history
-    setIsInitializing(false);
+
+    // Verify token with backend protected route
+    fetch('http://127.0.0.1:8000/protected', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(res => {
+      if (!res.ok) throw new Error();
+      return res.json();
+    })
+    .then(data => {
+      if (data.data) {
+        setAuthorized(true);
+        setMounted(true);
+      } else {
+        throw new Error();
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem('token');
+      setAuthorized(false);
+      window.location.replace("/auth?required=true");
+    });
   }, []);
+
+  // Load consultation history from sessionStorage on mount (client-side) once authorized
+  React.useEffect(() => {
+    if (authorized) {
+      const saved = sessionStorage.getItem("ayushman_chat_history");
+      if (saved) {
+        try {
+          setMessages(JSON.parse(saved));
+        } catch (e) {
+          console.warn("Failed to load saved consultation session:", e);
+        }
+      }
+      // Complete initialization after loading history
+      setIsInitializing(false);
+    }
+  }, [authorized]);
 
   // Sync consultation messages with sessionStorage on updates
   React.useEffect(() => {
@@ -65,6 +105,10 @@ function ChatWorkspaceContent() {
       sessionStorage.removeItem("ayushman_chat_history");
     }
   }, [messages]);
+
+  if (authorized === null || !mounted) {
+    return <div className="w-full h-screen min-h-screen bg-[var(--void)]" />;
+  }
 
   const starterPrompts = [
     { label: "Diabetes Threshold", query: "What is the diagnostic threshold for diabetes mellitus?" },

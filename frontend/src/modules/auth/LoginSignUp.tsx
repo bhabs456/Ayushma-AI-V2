@@ -81,6 +81,19 @@ export default function AuthPage({ defaultSignUp = false }: { defaultSignUp?: bo
       window.location.href = '/';
       return;
     }
+
+    // Direct redirection to home if navigating back via browser back button
+    const handlePopState = () => {
+      window.location.href = '/';
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    // Read redirect parameters to show authentication warning if accessing chat unauthorized
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("required") === "true") {
+      setErrorMessage("In order to access the chat workspace, please login or sign up first.");
+    }
+
     setMounted(true);
     setSignInEmail('');
     setSignInPassword('');
@@ -90,8 +103,11 @@ export default function AuthPage({ defaultSignUp = false }: { defaultSignUp?: bo
     setPassword('');
     setConfirmPassword('');
     setPhone('');
-    setErrorMessage(null);
     setSuccessMessage(null);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   if (!mounted) {

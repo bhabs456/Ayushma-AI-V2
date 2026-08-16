@@ -111,22 +111,22 @@ export function MessageBubble({
                   </td>
                 ),
                 p: ({ children }: any) => (
-                  <p className="mb-4 last:mb-0 leading-relaxed text-[var(--ink-dim)]">
+                  <p className="mb-4 last:mb-0 leading-relaxed text-[var(--ink-dim)] !max-w-none pt-1.5">
                     {children}
                   </p>
                 ),
                 h1: ({ children }: any) => (
-                  <h1 className="text-[13px] font-bold text-[var(--verify)] uppercase tracking-wider font-body mt-7 mb-4 first:mt-0">
+                  <h1 className="text-2xl font-serif  font-normal text-[#E8ECF1] mt-8 !mb-5 pb-3 border-b border-white/5 first:mt-0 !max-w-none">
                     {children}
                   </h1>
                 ),
                 h2: ({ children }: any) => (
-                  <h2 className="text-[13px] font-bold text-[var(--verify)] uppercase tracking-wider font-body mt-7 mb-4 first:mt-0">
+                  <h2 className="text-xl font-serif  font-normal text-[#E8ECF1] mt-8 !mb-5 pb-3 border-b border-white/5 first:mt-0 !max-w-none">
                     {children}
                   </h2>
                 ),
                 h3: ({ children }: any) => (
-                  <h3 className="text-[13px] font-bold text-[var(--verify)] uppercase tracking-wider font-body mt-7 mb-4 first:mt-0">
+                  <h3 className="text-lg font-serif  font-normal text-[#E8ECF1] mt-8 !mb-5 pb-3 border-b border-white/5 first:mt-0 !max-w-none">
                     {children}
                   </h3>
                 ),
